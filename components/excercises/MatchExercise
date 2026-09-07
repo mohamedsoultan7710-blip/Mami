@@ -1,0 +1,130 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import { MatchItem, Notion, notionLabels } from "@/data/exercises";
+
+function shuffle<T>(arr: T[]): T[] {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+type Props = {
+  pairs: MatchItem[];
+  forceReveal?: boolean;
+  onSolved?: (correct: boolean) => void;
+};
+
+const ALL_NOTIONS: Notion[] = ["حال", "عطف", "لكن", "عندما"];
+
+export default function MatchExercise({ pairs, forceReveal = false, onSolved }: Props) {
+  const shuffledPairs = useMemo(() => shuffle(pairs), [pairs]);
+  const [selected, setSelected] = useState<string | null>(null);
+  const [matched, setMatched] = useState<Set<string>>(new Set());
+  const [wrong, setWrong] = useState<{ phraseId: string; notion: Notion } | null>(null);
+  const [revealed, setRevealed] = useState(false);
+  const [reported, setReported] = useState(false);
+
+  const solved = matched.size === pairs.length;
+
+  useEffect(() => {
+    if (solved && !reported) {
+      setReported(true);
+      onSolved?.(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [solved]);
+
+  useEffect(() => {
+    if (forceReveal && !revealed) {
+      setRevealed(true);
+      setMatched(new Set(pairs.map((p) => p.id)));
+      if (!reported) {
+        setReported(true);
+        onSolved?.(false);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [forceReveal]);
+
+  function handlePhraseClick(id: string) {
+    if (revealed || matched.has(id)) return;
+    setSelected(id);
+    setWrong(null);
+  }
+
+  function handleNotionClick(notion: Notion) {
+    if (revealed || !selected) return;
+    const item = pairs.find((p) => p.id === selected);
+    if (!item) return;
+
+    if (item.notion === notion) {
+      setMatched((m) => new Set(m).add(selected));
+      setSelected(null);
+      setWrong(null);
+    } else {
+      setWrong({ phraseId: selected, notion });
+      setTimeout(() => setWrong(null), 700);
+    }
+  }
+
+  return (
+    <div className="w-full max-w-4xl mx-auto flex flex-col items-center gap-6">
+      <p className="text-lg font-bold text-deepsky/70">اضغط على الجملة ثم اضغط على النوع المناسب لها</p>
+
+      <div dir="rtl" className="grid md:grid-cols-2 gap-6 w-full">
+        <div className="flex flex-col gap-3">
+          {shuffledPairs.map((p) => {
+            const isMatched = matched.has(p.id);
+            const isSelected = selected === p.id;
+            const isWrong = wrong?.phraseId === p.id;
+            return (
+              <button
+                key={p.id}
+                onClick={() => handlePhraseClick(p.id)}
+                disabled={isMatched}
+                className={`rounded-2xl px-5 py-4 text-lg md:text-xl font-bold text-right transition-all active:scale-95 border-2 ${
+                  isMatched
+                    ? "bg-leaf/20 border-leaf text-deepsky/50"
+                    : isWrong
+                    ? "bg-berry/20 border-berry text-berry animate-wiggle"
+                    : isSelected
+                    ? "bg-sun/30 border-sun text-deepsky"
+                    : "bg-white border-deepsky/15 text-deepsky hover:border-sky"
+                }`}
+              >
+                {p.phrase} {isMatched && "✅"}
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="flex flex-col gap-3">
+          {ALL_NOTIONS.map((n) => (
+            <button
+              key={n}
+              onClick={() => handleNotionClick(n)}
+              disabled={!selected || revealed}
+              className="rounded-2xl px-5 py-4 text-lg md:text-xl font-extrabold bg-deepsky text-white hover:bg-sky disabled:opacity-40 transition-all active:scale-95"
+            >
+              {notionLabels[n]}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {solved && (
+        <div className="text-center animate-pop-in">
+          <p className="text-3xl font-extrabold text-leaf">🎉 أحسنت! لقد وصّلت كل الجمل</p>
+        </div>
+      )}
+
+      {revealed && !solved && (
+        <p className="text-xl font-extrabold text-berry">تم عرض التصحيح — كل الجمل موصولة الآن</p>
+      )}
+    </div>
+  );
+}
