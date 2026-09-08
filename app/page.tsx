@@ -48,8 +48,8 @@ export default function HomePage() {
         ))}
       </div>
 
-      <Link href="/admin/login" className="text-sm text-deepsky/50 underline hover:text-deepsky">
-        دخول المعلّمة (تسجيل الدخول)
+      <Link href="/resultats" className="text-sm text-deepsky/50 underline hover:text-deepsky">
+        📋 نتائج الواجبات (للمعلّمة)
       </Link>
     </main>
   );
